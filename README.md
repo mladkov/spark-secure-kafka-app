@@ -2,27 +2,33 @@ spark-secure-kafka-app
 ============
 
 ### Introduction
+
 This small app shows how to access data from a secure (Kerberized) Kafka cluster from Spark Streaming using [the new direct connector](http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html) which uses the [new Kafka Consumer API](https://kafka.apache.org/documentation/#consumerconfigs). In order to use this app, you need to use Cloudera Distribution of Apache Kafka version 2.1.0 or later. And, you need to use Cloudera Distribution of Apache Spark 2 release 1 or later. Documentation for this integration can be found [here](https://www.cloudera.com/documentation/spark2/latest/topics/spark2_kafka.html). You can read the related blog post [here](http://blog.cloudera.com/blog/2017/05/reading-data-securely-from-apache-kafka-to-apache-spark/).
 
 Currently this example focuses on accessing Kafka securely via Kerberos. It assumes SSL (i.e. encryption over the wire) is configured for Kafka. It assumes that Kafka authorization (via Sentry, for example) is not being used. That can be setup separately.
 
 ### Build the app
+
 To build, you need Python 2.7+, git and maven on the box.
 Do a git clone of this repo and then run:
+
 ```
 cd spark-secure-kafka-app
 mvn clean package
 ```
+
 Then, take the generated uber jar from `target/spark-secure-kafka-app-1.0-SNAPSHOT-jar-with-dependencies.jar` to the spark client node (where you are going to launch the query from). Let's assume you place this file in the home directory of this client machine.
 
 ### Running the app
+
 #### Creating configuration
+
 Before you run this app, you need to set up some JAAS configuration for Kerberos access. This particular configuration is inspired by that described in the [Apache Kafka documentation](https://kafka.apache.org/documentation/#security_kerberos_sasl_clientconfig). You also need to have access to the keytab needed for secure Kafka access.
 
 We assume the client user's keytab is called `user.keytab` and is placed in the home directory on the client box. Let's create a file called `spark_jaas.conf` and place it in the home directory of the user as well with the JAAS conf:
 ```
 # Change user.keytab to the keytab file name.
-# Keep the beginning `./` infront of the keytab name. 
+# Keep the beginning `./` infront of the keytab name.
 # Change principal to be the real principal below
 cat << 'EOF' > spark_jaas.conf
 KafkaClient {
@@ -38,7 +44,7 @@ EOF
 ```
 
 ### spark-submit
-Now run the follwing command:
+Now run the following command:
 ```
 # set num-executors, num-cores, etc. according to your needs.
 # If simply testing, ok to leave the defaults as below
@@ -71,7 +77,7 @@ kafka-topics --create --zookeeper <zk node>:2181 --topic <topic> --partitions 4 
 cd ~
 # Generate the client.properties file which will be used by the console producer
 # to select the appropriate security protocol and mechanism.
-# If using SSL, also set `ssl.truststore.location` and `ssl.truststore.password` 
+# If using SSL, also set `ssl.truststore.location` and `ssl.truststore.password`
 # properties appropriately in client.properties
 # If not using SSL, change security.protocol's value to be SASL_PLAINTEXT (instead of SASL_SSL).
 echo "security.protocol=SASL_SSL" >> client.properties
@@ -91,7 +97,7 @@ KafkaClient {
     useTicketCache=false
     serviceName="kafka"
     principal="user@MY.DOMAIN.COM";
-}; 
+};
 EOF
 ```
 
