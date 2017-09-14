@@ -3,29 +3,53 @@ spark-secure-kafka-app
 
 ### Introduction
 
-This small app shows how to access data from a secure (Kerberized) Kafka cluster from Spark Streaming using [the new direct connector](http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html) which uses the [new Kafka Consumer API](https://kafka.apache.org/documentation/#consumerconfigs). In order to use this app, you need to use Cloudera Distribution of Apache Kafka version 2.1.0 or later. And, you need to use Cloudera Distribution of Apache Spark 2 release 1 or later. Documentation for this integration can be found [here](https://www.cloudera.com/documentation/spark2/latest/topics/spark2_kafka.html). You can read the related blog post [here](http://blog.cloudera.com/blog/2017/05/reading-data-securely-from-apache-kafka-to-apache-spark/).
+This small app shows how to access data from a secure (Kerberized) Kafka
+cluster from Spark Streaming using
+[the new direct connector](http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html)
+which uses the
+[new Kafka Consumer API](https://kafka.apache.org/documentation/#consumerconfigs). In
+order to use this app, you need to use Cloudera Distribution of Apache Kafka
+version 2.1.0 or later. And, you need to use Cloudera Distribution of Apache
+Spark 2 release 1 or later. Documentation for this integration can be found
+[here](https://www.cloudera.com/documentation/spark2/latest/topics/spark2_kafka.html). You
+can read the related blog post
+[here](http://blog.cloudera.com/blog/2017/05/reading-data-securely-from-apache-kafka-to-apache-spark/).
 
-Currently this example focuses on accessing Kafka securely via Kerberos. It assumes SSL (i.e. encryption over the wire) is configured for Kafka. It assumes that Kafka authorization (via Sentry, for example) is not being used. That can be setup separately.
+Currently this example focuses on accessing Kafka securely via Kerberos. It
+assumes SSL (i.e. encryption over the wire) is configured for Kafka. It
+assumes that Kafka authorization (via Sentry, for example) is not being
+used. That can be setup separately.
 
 ### Build the app
 
-To build, you need Python 2.7+, git and maven on the box.
-Do a git clone of this repo and then run:
+To build, you need Python 2.7+, git and maven on the box.  Do a git clone of
+this repo and then run:
 
 ```
 cd spark-secure-kafka-app
 mvn clean package
 ```
 
-Then, take the generated uber jar from `target/spark-secure-kafka-app-1.0-SNAPSHOT-jar-with-dependencies.jar` to the spark client node (where you are going to launch the query from). Let's assume you place this file in the home directory of this client machine.
+Then, take the generated uber jar from
+`target/spark-secure-kafka-app-1.0-SNAPSHOT-jar-with-dependencies.jar` to
+the spark client node (where you are going to launch the query from). Let's
+assume you place this file in the home directory of this client machine.
 
 ### Running the app
 
 #### Creating configuration
 
-Before you run this app, you need to set up some JAAS configuration for Kerberos access. This particular configuration is inspired by that described in the [Apache Kafka documentation](https://kafka.apache.org/documentation/#security_kerberos_sasl_clientconfig). You also need to have access to the keytab needed for secure Kafka access.
+Before you run this app, you need to set up some JAAS configuration for
+Kerberos access. This particular configuration is inspired by that described
+in the
+[Apache Kafka documentation](https://kafka.apache.org/documentation/#security_kerberos_sasl_clientconfig). You
+also need to have access to the keytab needed for secure Kafka access.
 
-We assume the client user's keytab is called `user.keytab` and is placed in the home directory on the client box. Let's create a file called `spark_jaas.conf` and place it in the home directory of the user as well with the JAAS conf:
+We assume the client user's keytab is called `user.keytab` and is placed in
+the home directory on the client box. Let's create a file called
+`spark_jaas.conf` and place it in the home directory of the user as well
+with the JAAS conf:
+
 ```
 # Change user.keytab to the keytab file name.
 # Keep the beginning `./` infront of the keytab name.
@@ -44,7 +68,9 @@ EOF
 ```
 
 ### spark-submit
+
 Now run the following command:
+
 ```
 # set num-executors, num-cores, etc. according to your needs.
 # If simply testing, ok to leave the defaults as below
@@ -69,7 +95,12 @@ SPARK_KAFKA_VERSION=0.10 spark2-submit \
 ```
 
 ### Generating some test data
-While you run this app, you may want to generate some data in the topic Spark Streaming is reading from, and may want to view the word counts as the data is being generated. To generate data in the Kafka topic, you can use the `kafka-console-producer` using the following command:
+
+While you run this app, you may want to generate some data in the topic
+Spark Streaming is reading from, and may want to view the word counts as the
+data is being generated. To generate data in the Kafka topic, you can use
+the `kafka-console-producer` using the following command:
+
 ```
 # Create a Kafka topic
 kafka-topics --create --zookeeper <zk node>:2181 --topic <topic> --partitions 4 --replication-factor 3
@@ -83,7 +114,10 @@ cd ~
 echo "security.protocol=SASL_SSL" >> client.properties
 echo "sasl.kerberos.service.name=kafka" >> client.properties
 ```
-Populate the following contents in a different JAAS conf, say `console.conf`:
+
+Populate the following contents in a different JAAS conf, say
+`console.conf`:
+
 ```
 # Change the /full/path/to/user.keytab below
 # to the full path to the keytab.
@@ -101,6 +135,7 @@ KafkaClient {
 EOF
 ```
 
+
 ```
 # Run the console producer
 # If not using SSL, change the port below to 9092
@@ -110,13 +145,28 @@ kafka-console-producer --broker-list <broker>:9093 --producer.config client.prop
 # Now, type in some words on the console, and close the producer.
 ```
 
-### What's happening under the hood?
-For consuming data via SASL/Kerberos, we pass on the JAAS configuration (`spark_jaas.conf`) to all executors. Along with this config, the keytab is also passed on to all executors.
 
-These executors via the JAAS configuration know where the keytab is (in their working directory, since it was passed using `--files`). And, the driver (in the YARN cluster mode) and the executors then use the configured credentails to access Kafka via Kerberos tickets.
+### What's happening under the hood?
+
+For consuming data via SASL/Kerberos, we pass on the JAAS configuration
+(`spark_jaas.conf`) to all executors. Along with this config, the keytab is
+also passed on to all executors.
+
+These executors via the JAAS configuration know where the keytab is (in
+their working directory, since it was passed using `--files`). And, the
+driver (in the YARN cluster mode) and the executors then use the configured
+credentails to access Kafka via Kerberos tickets.
 
 ### What you should see
-If all goes well, you should see counts of various words in every batch interval, in your spark streaming driver's stdout. To get driver's stdout (when using yarn cluster mode), please get the yarn logs using `yarn logs -applicationId <app ID>`. The `<app ID>` can be obtained through the console output on the client machine where `spark-submit` was launched from. In the retrieved logs, you would see something like:
+
+If all goes well, you should see counts of various words in every batch
+interval, in your spark streaming driver's stdout. To get driver's stdout
+(when using yarn cluster mode), please get the yarn logs using `yarn logs
+-applicationId <app ID>`. The `<app ID>` can be obtained through the console
+output on the client machine where `spark-submit` was launched from. In the
+retrieved logs, you would see something like:
+
+
 ```
 -------------------------------------------
 Time: 1494007312000 ms
@@ -127,5 +177,5 @@ Time: 1494007312000 ms
 -------------------------------------------
 Time: 1494007314000 ms
 -------------------------------------------
-
 ```
+
