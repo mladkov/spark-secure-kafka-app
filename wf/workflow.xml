@@ -1,0 +1,48 @@
+<workflow-app xmlns='uri:oozie:workflow:0.5' name='spark-kafka' xmlns:sla="uri:oozie:sla:0.2">
+  <global>
+    <job-tracker>${jobTracker}</job-tracker>
+    <name-node>${nameNode}</name-node>
+    <configuration>
+      <property>
+        <name>mapreduce.job.queuename</name>
+        <value>${queueName}</value>
+      </property>
+    </configuration>
+  </global>
+
+  <credentials>
+    <credential name="hive2_credentials" type="hive2">
+      <property>
+        <name>hive2.jdbc.url</name>
+        <value>jdbc:hive2://${hive2_server}:${hive2_port}/default;ssl=true</value>
+      </property>
+      <property>
+        <name>hive2.server.principal</name>
+        <value>hive/${hive2_server}@${kerberos_realm}</value>
+      </property>
+    </credential>
+
+  <start to='spark-kafka-run' />
+
+  <!-- Spark job to process the Mediaroom IIS Logs Data - Shell-action -->
+  <action name="spark-kafka-run">
+    <shell xmlns="uri:oozie:shell-action:0.3">
+      <exec>spark-command.sh</exec>
+      <argument>${keyTabLocalPath}</argument>
+      <argument>${keyTabUsername}</argument>
+      <argument>${kerberos_realm}</argument>
+      <argument>spark2-submit --conf spark.yarn.queue=${queueName} --num-executors 2 --master yarn --deploy-mode client --files spark_jaas.conf#spark_jaas.conf,user.keytab#user.keytab --driver-java-options "-Djava.security.auth.login.config=./spark_jaas.conf" --class com.cloudera.spark.examples.KafkaEventConsumer --conf "spark.executor.extraJavaOptions=-Djava.security.auth.login.config=./spark_jaas.conf" spark-secure-kafka-app-1.0-SNAPSHOT-jar-with-dependencies.jar ${kafkaBroker}:9093 ${kafkaTopic} ${kafkaConsumerGroup} true /opt/cloudera/security/jks/truststore.jks password</argument>
+      <env-var>HADOOP_CONF_DIR=/etc/hadoop/conf</env-var>
+      <file>${keyTabLocation}/${keyTabName}</file>
+      <file>${projectPath}/target/spark-secure-kafka-app-1.0-SNAPSHOT-jar-with-dependencies.jar</file>
+    </shell>
+    <ok to="end"/>
+    <error to="fail"/>
+  </action>
+
+  <kill name="fail">
+   <message>"WF: spark-kafka-run failed"</message>
+  </kill>
+
+ <end name='end'/>
+</workflow-app>
